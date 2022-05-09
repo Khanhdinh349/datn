@@ -1,0 +1,8 @@
+source "D:/Download/esp-idf/components/app_update/Kconfig.projbuild"
+source "D:/Download/esp-idf/components/bootloader/Kconfig.projbuild"
+source "D:/Download/esp-idf/components/esp_rom/Kconfig.projbuild"
+source "D:/Download/esp-idf/components/esptool_py/Kconfig.projbuild"
+source "D:/Download/esp-idf/components/partition_table/Kconfig.projbuild"
+source "D:/DH/DATN/Code/send/main/Kconfig.projbuild"
+source "D:/DH/DATN/Code/components/lora/Kconfig.projbuild"
+source "D:/DH/DATN/Code/components/dht11/Kconfig.projbuild"
