@@ -72,3 +72,6 @@ D:/DH/DATN/Code/send/build/esp-idf/wifi_provisioning/libwifi_provisioning.a
 D:/DH/DATN/Code/send/build/esp-idf/main/libmain.a
 D:/DH/DATN/Code/send/build/esp-idf/lora/liblora.a
 D:/DH/DATN/Code/send/build/esp-idf/dht11/libdht11.a
+D:/DH/DATN/Code/send/build/esp-idf/sht30/libsht30.a
+D:/DH/DATN/Code/send/build/esp-idf/i2c/libi2c.a
+D:/DH/DATN/Code/send/build/esp-idf/mh-z19/libmh-z19.a

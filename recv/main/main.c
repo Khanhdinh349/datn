@@ -36,6 +36,23 @@ static const char *TAG = "ESP32 GATEWAY";
 static EventGroupHandle_t s_wifi_event_group;
 static int s_retry_num = 0;
 
+void time ()
+{
+    time_t     now;
+    struct tm  ts;
+    char       hour[3];
+    setenv("TZ", "ICT-7", 1);
+    int hour_t;
+
+    // Get current time
+    time(&now);
+
+    // Format time, "ddd yyyy-mm-dd hh:mm:ss zzz"
+    ts = *localtime(&now);
+    strftime(hour, sizeof(hour), "%H", &ts);
+    hour_t = atoi(hour);
+    
+}
 void JSON_Analyze(const cJSON * const root) {
 	cJSON *current_element = NULL;;
 	cJSON_ArrayForEach(current_element, root) {

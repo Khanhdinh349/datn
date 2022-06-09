@@ -53,16 +53,6 @@ TaskHandle_t http_post_task_handler = NULL;
 static time_t calibration_epoch = 0; 
 static uint32_t calibration_esp_timer = 0;
 
-/* Root cert for howsmyssl.com, taken from server_root_cert.pem
-
-   The PEM file was extracted from the output of this command:
-   openssl s_client -showcerts -connect iaq-sensor-default-rtdb.europe-west1.firebasedatabase.app:443 </dev/null
-
-   The CA root cert is the last cert given in the chain of certs.
-
-   To embed it in the app binary, the PEM file is named
-   in the component.mk COMPONENT_EMBED_TXTFILES variable.
-*/
 extern const uint8_t server_root_cert_pem_start[] asm("_binary_server_root_cert_pem_start");
 extern const uint8_t server_root_cert_pem_end[]   asm("_binary_server_root_cert_pem_end");
 esp_tls_client_session_t *tls_client_session = NULL;

@@ -124,6 +124,9 @@ if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   include("D:/DH/DATN/Code/send/build/esp-idf/main/cmake_install.cmake")
   include("D:/DH/DATN/Code/send/build/esp-idf/lora/cmake_install.cmake")
   include("D:/DH/DATN/Code/send/build/esp-idf/dht11/cmake_install.cmake")
+  include("D:/DH/DATN/Code/send/build/esp-idf/sht30/cmake_install.cmake")
+  include("D:/DH/DATN/Code/send/build/esp-idf/i2c/cmake_install.cmake")
+  include("D:/DH/DATN/Code/send/build/esp-idf/mh-z19/cmake_install.cmake")
 
 endif()
 

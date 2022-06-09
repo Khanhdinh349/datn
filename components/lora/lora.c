@@ -435,17 +435,17 @@ lora_init(void)
     * Configure CPU hardware to communicate with the radio chip
     */
    //gpio_pad_select_gpio(CONFIG_RST_GPIO);
-   gpio_reset_pin(CONFIG_RST_GPIO);
-   gpio_set_direction(CONFIG_RST_GPIO, GPIO_MODE_OUTPUT);
+   gpio_reset_pin(GPIO_NUM_22);
+   gpio_set_direction(GPIO_NUM_22, GPIO_MODE_OUTPUT);
    //gpio_pad_select_gpio(CONFIG_CS_GPIO);
-   gpio_reset_pin(CONFIG_CS_GPIO);
-   gpio_set_direction(CONFIG_CS_GPIO, GPIO_MODE_OUTPUT);
-   gpio_set_level(CONFIG_CS_GPIO, 1);
+   gpio_reset_pin(GPIO_NUM_15);
+   gpio_set_direction(GPIO_NUM_15, GPIO_MODE_OUTPUT);
+   gpio_set_level(GPIO_NUM_15, 1);
 
    spi_bus_config_t bus = {
-      .miso_io_num = CONFIG_MISO_GPIO,
-      .mosi_io_num = CONFIG_MOSI_GPIO,
-      .sclk_io_num = CONFIG_SCK_GPIO,
+      .miso_io_num = GPIO_NUM_19,
+      .mosi_io_num = GPIO_NUM_23,
+      .sclk_io_num = GPIO_NUM_18,
       .quadwp_io_num = -1,
       .quadhd_io_num = -1,
       .max_transfer_sz = 0
@@ -458,7 +458,7 @@ lora_init(void)
    spi_device_interface_config_t dev = {
       .clock_speed_hz = 9000000,
       .mode = 0,
-      .spics_io_num = CONFIG_CS_GPIO,
+      .spics_io_num = GPIO_NUM_15,
       .queue_size = 7,
       .flags = 0,
       .pre_cb = NULL
