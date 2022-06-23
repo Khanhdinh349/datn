@@ -39,7 +39,7 @@ endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for each subdirectory.
-  include("D:/DH/DATN/Code/send/build/bootloader/esp-idf/cmake_install.cmake")
+  include("D:/DH/DATN/gitcode/datn/send/build/bootloader/esp-idf/cmake_install.cmake")
 
 endif()
 
@@ -51,5 +51,5 @@ endif()
 
 string(REPLACE ";" "\n" CMAKE_INSTALL_MANIFEST_CONTENT
        "${CMAKE_INSTALL_MANIFEST_FILES}")
-file(WRITE "D:/DH/DATN/Code/send/build/bootloader/${CMAKE_INSTALL_MANIFEST}"
+file(WRITE "D:/DH/DATN/gitcode/datn/send/build/bootloader/${CMAKE_INSTALL_MANIFEST}"
      "${CMAKE_INSTALL_MANIFEST_CONTENT}")

@@ -1,4 +1,4 @@
-# Install script for directory: D:/DH/DATN/Code/recv/main
+# Install script for directory: D:/DH/DATN/gitcode/datn/recv/main
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)

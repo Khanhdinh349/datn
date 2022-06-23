@@ -1,4 +1,4 @@
-# Install script for directory: D:/DH/DATN/Code/components/dht11
+# Install script for directory: D:/DH/DATN/gitcode/datn/components/dht11
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)

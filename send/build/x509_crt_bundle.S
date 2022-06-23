@@ -1,4 +1,4 @@
-/* * Data converted from D:/DH/DATN/Code/send/build/esp-idf/mbedtls/x509_crt_bundle
+/* * Data converted from D:/DH/DATN/gitcode/datn/send/build/esp-idf/mbedtls/x509_crt_bundle
  */
 .data
 .section .rodata.embedded

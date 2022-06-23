@@ -1,8 +1,8 @@
 {
     "project_name":       "bootloader",
     "project_path":       "D:/Download/esp-idf/components/bootloader/subproject",
-    "build_dir":          "D:/DH/DATN/Code/send/build/bootloader",
-    "config_file":        "D:/DH/DATN/Code/send/sdkconfig",
+    "build_dir":          "D:/DH/DATN/gitcode/datn/send/build/bootloader",
+    "config_file":        "D:/DH/DATN/gitcode/datn/send/sdkconfig",
     "config_defaults":    "",
     "app_elf":            "bootloader.elf",
     "app_bin":            "bootloader.bin",

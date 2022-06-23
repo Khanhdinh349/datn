@@ -154,12 +154,6 @@ CONFIG_SCK_GPIO=18
 # end of LoRa Configuration
 
 #
-# DHT11 Configuration
-#
-CONFIG_DATA_GPIO=4
-# end of DHT11 Configuration
-
-#
 # Compiler options
 #
 CONFIG_COMPILER_OPTIMIZATION_DEFAULT=y

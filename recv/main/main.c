@@ -22,167 +22,175 @@
 #include <malloc.h>
 #include "cJSON.h"
 #include "fb.h"
-
-
-#define EXAMPLE_ESP_WIFI_SSID      					"tPhone"
-#define EXAMPLE_ESP_WIFI_PASS      					"00112233"
-#define EXAMPLE_ESP_MAXIMUM_RETRY  					5
-#define WIFI_CONNECTED_BIT 							BIT0
-#define WIFI_FAIL_BIT      							BIT1
-#define ESP_WIFI_SCAN_AUTH_MODE_THRESHOLD 			WIFI_AUTH_WPA2_PSK
+#include "wifi.h"
+#include "esp_sntp.h"
 
 static const char *TAG = "ESP32 GATEWAY";
+fb_data_t data_fb;
+bool flagPut= false;
 
-static EventGroupHandle_t s_wifi_event_group;
-static int s_retry_num = 0;
 
-void time ()
-{
-    time_t     now;
-    struct tm  ts;
-    char       hour[3];
-    setenv("TZ", "ICT-7", 1);
-    int hour_t;
-
-    // Get current time
-    time(&now);
-
-    // Format time, "ddd yyyy-mm-dd hh:mm:ss zzz"
-    ts = *localtime(&now);
-    strftime(hour, sizeof(hour), "%H", &ts);
-    hour_t = atoi(hour);
-    
-}
-void JSON_Analyze(const cJSON * const root) {
-	cJSON *current_element = NULL;;
-	cJSON_ArrayForEach(current_element, root) {
-		if (current_element->string) {
-			const char* string = current_element->string;
-			ESP_LOGI("JSON", "[%s]", string);
+void time_task() { 
+	ESP_LOGI("TIME","Start TIMER");
+    time_t now;
+    struct tm timeinfo;
+	int hour_i=0;
+	int min_i=0;
+	while(1){
+		time(&now);
+		localtime_r(&now, &timeinfo);
+		// Is time set? If not, tm_year will be (1970 - 1900).
+		if (timeinfo.tm_year < (2016 - 1900)) {
+			ESP_LOGI(TAG, "Time is not set yet. Connecting to WiFi and getting time over NTP.");
+			ESP_LOGI(TAG, "Initializing SNTP");
+			sntp_setoperatingmode(SNTP_OPMODE_POLL);
+			sntp_setservername(0, "pool.ntp.org");
+			//sntp_set_time_sync_notification_cb(time_sync_notification_cb);
+			sntp_init();
+			time_t now = 0;
+			struct tm timeinfo = { 0 };
+			int retry = 0;
+			const int retry_count = 10;
+			while (sntp_get_sync_status() == SNTP_SYNC_STATUS_RESET && ++retry < retry_count) {
+				ESP_LOGI(TAG, "Waiting for system time to be set... (%d/%d)", retry, retry_count);
+				vTaskDelay(2000 / portTICK_PERIOD_MS);
+			}
+			time(&now);
+			localtime_r(&now, &timeinfo);
+			// update 'now' variable with current time
+			time(&now);
 		}
-		if (cJSON_IsInvalid(current_element)) {
-			ESP_LOGI("JSON", "Invalid");
-		} else if (cJSON_IsFalse(current_element)) {
-			ESP_LOGI("JSON", "False");
-		} else if (cJSON_IsTrue(current_element)) {
-			ESP_LOGI("JSON", "True");
-		} else if (cJSON_IsNull(current_element)) {
-			ESP_LOGI("JSON", "Null");
-		} else if (cJSON_IsNumber(current_element)) {
-			int valueint = current_element->valueint;
-			double valuedouble = current_element->valuedouble;
-			ESP_LOGI("JSON", "int=%d double=%f", valueint, valuedouble);
-		} else if (cJSON_IsString(current_element)) {
-			const char* valuestring = current_element->valuestring;
-			ESP_LOGI("JSON", "%s", valuestring);
-		} else if (cJSON_IsArray(current_element)) {
-			JSON_Analyze(current_element);
-		} else if (cJSON_IsObject(current_element)) {
-			JSON_Analyze(current_element);
-		} else if (cJSON_IsRaw(current_element)) {
-			ESP_LOGI("JSON", "Raw(Not support)");
+
+		char *strftime_buf_h = malloc(64*sizeof(char));
+		char *strftime_buf_m = malloc(64*sizeof(char));
+
+		// Set timezone to VN Standard Time
+		setenv("TZ", "ICT-7", 1);
+		tzset();
+		localtime_r(&now, &timeinfo);
+		strftime(strftime_buf_h, sizeof(strftime_buf_h), "%H", &timeinfo);
+		strftime(strftime_buf_m, sizeof(strftime_buf_m), "%M", &timeinfo);
+		
+
+		ESP_LOGI(TAG, "=====Get Time=====");
+		ESP_LOGI(TAG, "Hour is: %s ", strftime_buf_h);
+		ESP_LOGI(TAG, "Min is: %s ", strftime_buf_m);
+		
+		hour_i=atoi(strftime_buf_h);
+		min_i=atoi(strftime_buf_m);
+
+		data_fb.hour=hour_i;
+		data_fb.min=min_i;			
+	
+		if (sntp_get_sync_mode() == SNTP_SYNC_MODE_SMOOTH) {
+			struct timeval outdelta;
+			while (sntp_get_sync_status() == SNTP_SYNC_STATUS_IN_PROGRESS) {
+				adjtime(NULL, &outdelta);
+				ESP_LOGI(TAG, "Waiting for adjusting time ... outdelta = %li sec: %li ms: %li us",
+						(long)outdelta.tv_sec,
+						outdelta.tv_usec/1000,
+						outdelta.tv_usec%1000);
+				vTaskDelay(2000 / portTICK_PERIOD_MS);
+			}
+		}
+		vTaskDelay(10000 / portTICK_PERIOD_MS);
+	}
+}
+void JSON_Analyze(const cJSON *const root)
+{
+	cJSON *current_element = NULL;
+	cJSON_ArrayForEach(current_element, root)
+	{
+		if (current_element->string)
+		{
+			const char *string = current_element->string;
+			ESP_LOGI("JSON", "[%s]", string);
+			if(strcmp(string,"ID")==0){
+				if (cJSON_IsString(current_element))
+				{
+					char *valuestring = current_element->valuestring;
+					data_fb.ID=atoi(valuestring);
+					ESP_LOGI("JSON", "%d", data_fb.ID);
+				}
+			}
+			if(strcmp(string,"CO")==0){
+				if (cJSON_IsString(current_element))
+				{
+					char *valuestring = current_element->valuestring;
+					data_fb.CO=atof(valuestring);
+					ESP_LOGI("JSON", "%f", data_fb.CO);
+				}
+			}
+			if(strcmp(string,"UV")==0){
+				if (cJSON_IsString(current_element))
+				{
+					char *valuestring = current_element->valuestring;
+					data_fb.UV=atof(valuestring);
+					ESP_LOGI("JSON", "%f", data_fb.UV);
+				}
+			}
+			if(strcmp(string,"H")==0){
+				if (cJSON_IsString(current_element))
+				{
+					char *valuestring = current_element->valuestring;
+					data_fb.H=atof(valuestring);
+					ESP_LOGI("JSON", "%f", data_fb.H);
+				}
+			}
+			if(strcmp(string,"T")==0){
+				if (cJSON_IsString(current_element))
+				{
+					char *valuestring = current_element->valuestring;
+					data_fb.T=atof(valuestring);
+					ESP_LOGI("JSON", "%f", data_fb.T);
+				}
+			}
+			if(strcmp(string,"D")==0){
+				if (cJSON_IsString(current_element))
+				{
+					char *valuestring = current_element->valuestring;
+					data_fb.D=atof(valuestring);
+					ESP_LOGI("JSON", "%f", data_fb.D);
+				}
+			}
+			if(strcmp(string,"D10")==0){
+				if (cJSON_IsString(current_element))
+				{
+					char *valuestring = current_element->valuestring;
+					data_fb.D10=atof(valuestring);
+					ESP_LOGI("JSON", "%f", data_fb.D10);
+				}
+			}
 		}
 	}
 }
 void task_rx(void *pvParameters)
 {
 	ESP_LOGI(pcTaskGetName(NULL), "Start");
-		uint8_t buf[256];
-	while(1) {
+	uint8_t buf[256];
+	while (1)
+	{
 		lora_receive();
-		if (lora_received()) {
+		if (lora_received())
+		{
 			int receive_len = lora_receive_packet(buf, sizeof(buf));
 			ESP_LOGI(pcTaskGetName(NULL), "%d byte packet received:[%.*s]", receive_len, receive_len, buf);
 			ESP_LOGI("RX", "Deserialize.....");
-			cJSON *root2 = cJSON_Parse((char*)buf);
+			cJSON *root2 = cJSON_Parse((char *)buf);
 			JSON_Analyze(root2);
 			cJSON_Delete(root2);
-		} 
+			flagPut=true;
+		}
 		vTaskDelay(1);
 	}
 }
 
-static void event_handler(void* arg, esp_event_base_t event_base,
-                                int32_t event_id, void* event_data)
-{
-    if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
-        esp_wifi_connect();
-    } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
-        if (s_retry_num < EXAMPLE_ESP_MAXIMUM_RETRY) {
-            esp_wifi_connect();
-            s_retry_num++;
-            ESP_LOGI(TAG, "retry to connect to the AP");
-        } else {
-            xEventGroupSetBits(s_wifi_event_group, WIFI_FAIL_BIT);
-        }
-        ESP_LOGI(TAG,"connect to the AP fail");
-    } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
-        ip_event_got_ip_t* event = (ip_event_got_ip_t*) event_data;
-        ESP_LOGI(TAG, "got ip:" IPSTR, IP2STR(&event->ip_info.ip));
-        s_retry_num = 0;
-        xEventGroupSetBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
-    }
-}
-
-void wifi_init_sta(void)
-{
-    s_wifi_event_group = xEventGroupCreate();
-
-    ESP_ERROR_CHECK(esp_netif_init());
-
-    ESP_ERROR_CHECK(esp_event_loop_create_default());
-    esp_netif_create_default_wifi_sta();
-
-    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
-    ESP_ERROR_CHECK(esp_wifi_init(&cfg));
-
-    esp_event_handler_instance_t instance_any_id;
-    esp_event_handler_instance_t instance_got_ip;
-    ESP_ERROR_CHECK(esp_event_handler_instance_register(WIFI_EVENT,
-                                                        ESP_EVENT_ANY_ID,
-                                                        &event_handler,
-                                                        NULL,
-                                                        &instance_any_id));
-    ESP_ERROR_CHECK(esp_event_handler_instance_register(IP_EVENT,
-                                                        IP_EVENT_STA_GOT_IP,
-                                                        &event_handler,
-                                                        NULL,
-                                                        &instance_got_ip));
-
-    wifi_config_t wifi_config = {
-        .sta = {
-            .ssid = EXAMPLE_ESP_WIFI_SSID,
-            .password = EXAMPLE_ESP_WIFI_PASS,
-	     .threshold.authmode = ESP_WIFI_SCAN_AUTH_MODE_THRESHOLD,
-        },
-    };
-    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA) );
-    ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config) );
-    ESP_ERROR_CHECK(esp_wifi_start() );
-
-    ESP_LOGI(TAG, "wifi_init_sta finished.");
-
-    EventBits_t bits = xEventGroupWaitBits(s_wifi_event_group,
-            WIFI_CONNECTED_BIT | WIFI_FAIL_BIT,
-            pdFALSE,
-            pdFALSE,
-            portMAX_DELAY);
-
-    if (bits & WIFI_CONNECTED_BIT) {
-        ESP_LOGI(TAG, "connected to ap SSID:%s password:%s",
-                 EXAMPLE_ESP_WIFI_SSID, EXAMPLE_ESP_WIFI_PASS);
-    } else if (bits & WIFI_FAIL_BIT) {
-        ESP_LOGI(TAG, "Failed to connect to SSID:%s, password:%s",
-                 EXAMPLE_ESP_WIFI_SSID, EXAMPLE_ESP_WIFI_PASS);
-    } else {
-        ESP_LOGE(TAG, "UNEXPECTED EVENT");
-    }
-}
 void app_main()
-{	
-	if (lora_init() == 0) {
+{
+	if (lora_init() == 0){
 		ESP_LOGE(pcTaskGetName(NULL), "Does not recognize the module");
-		while(1) {
+		while (1)
+		{
 			vTaskDelay(1);
 		}
 	}
@@ -223,18 +231,13 @@ void app_main()
 	ESP_LOGI(pcTaskGetName(NULL), "bandwidth=%d", bw);
 	lora_set_spreading_factor(sf);
 	ESP_LOGI(pcTaskGetName(NULL), "spreading_factor=%d", sf);
-	//Initialize NVS
-	esp_err_t ret = nvs_flash_init();
-	if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
-		ESP_ERROR_CHECK(nvs_flash_erase());
-		ret = nvs_flash_init();
-	}
-	ESP_ERROR_CHECK(ret);
-	ESP_LOGI(TAG, "ESP_WIFI_MODE_STA");
-    wifi_init_sta();
 
-	xTaskCreate(&task_rx, "task_rx", 4096, NULL, 1, NULL);
-	if ( http_post_init() != pdPASS ){
-        ESP_LOGE(TAG,"Error while initing http_post");
-    }
+	
+	wifi_connection_begin();
+	wifi_connection_start();
+
+	xTaskCreate(&task_rx, "task_rx", 10 * 1024, NULL, 4, NULL);
+	xTaskCreate(&time_task, "time_task", 10 * 1024, NULL, 3, NULL);
+	//xTaskCreate(&firebase_task_realtime, "firebase_task_realtime", 10 * 1024, (void *)&data_fb, 2, NULL);
+	xTaskCreate(&firebase_task_timestamp, "firebase_task_timestamp", 10 * 1024, (void *)&data_fb, 1, NULL);
 }

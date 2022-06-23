@@ -1,35 +1,109 @@
 #include <stdio.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+
+#include <math.h>
+#include "string.h"
+
 #include "esp_log.h"
 #include "lora.h"
-
-#include "string.h"
+#include "esp_sleep.h"
 #include "driver/adc.h"
 #include "driver/gpio.h"
 #include "esp_adc_cal.h"
 #include "sht30.h"
+#include "sds011.h"
 #include "mhz19.h"
 
-#define MQ          				ADC1_CHANNEL_3   //
+#define MQ          				ADC1_CHANNEL_3   //gpio num 39 
 #define UV          				ADC1_CHANNEL_6   //gpio num 34
 #define PM25          				ADC1_CHANNEL_7   //gpio num 35
 #define ADC_EXAMPLE_ATTEN           ADC_ATTEN_DB_11
 #define ADC_EXAMPLE_CALI_SCHEME     ESP_ADC_CAL_VAL_EFUSE_VREF
+
+/** Sensor UART configuration. Adapt to your setup. */
+#define SDS011_UART_PORT UART_NUM_2
+#define SDS011_RX_GPIO 26
+#define SDS011_TX_GPIO 27
+
+/** Time in seconds to let the SDS011 run before taking the measurment. */
+#define SDS011_ON_DURATION 15
+
+/** Interval to read and print the sensor values in seconds. Must be bigger than
+ * SDS011_ON_DURATION. */
+#define PRINT_INTERVAL 105
 static sht3x_t dev;
 static esp_adc_cal_characteristics_t adc1_chars;
+bool enable_sleep = false;
+bool enable_lora_send = false;
 struct Data 
 {
 	float TP;
 	float HM;
 	int UV;
 	float D;
-	int CO2;
-	int CO;
+	float D10;
+	float CO;
 
 };
 
 struct Data data;
+
+////////////////////////////SDS011///////////////////////////////////////
+static const struct sds011_tx_packet sds011_tx_sleep_packet = {
+    .head = SDS011_PACKET_HEAD,
+    .command = SDS011_CMD_TX,
+    .sub_command = SDS011_TX_CMD_SLEEP_MODE,
+    .payload_sleep_mode = {.method = SDS011_METHOD_SET,
+                           .mode = SDS011_SLEEP_MODE_ENABLED},
+    .device_id = SDS011_DEVICE_ID_ALL,
+    .tail = SDS011_PACKET_TAIL};
+
+static const struct sds011_tx_packet sds011_tx_wakeup_packet = {
+    .head = SDS011_PACKET_HEAD,
+    .command = SDS011_CMD_TX,
+    .sub_command = SDS011_TX_CMD_SLEEP_MODE,
+    .payload_sleep_mode = {.method = SDS011_METHOD_SET,
+                           .mode = SDS011_SLEEP_MODE_DISABLED},
+    .device_id = SDS011_DEVICE_ID_ALL,
+    .tail = SDS011_PACKET_TAIL};
+
+void data_task(void* pvParameters) {
+	struct sds011_rx_packet rx_packet;
+	TickType_t xLastWakeTime;
+	xLastWakeTime = xTaskGetTickCount();
+	for (;;) {
+		/** Wake the sensor up. */
+		sds011_send_cmd_to_queue(&sds011_tx_wakeup_packet, 0);
+		/** Give it a few seconds to create some airflow. */
+		vTaskDelay(pdMS_TO_TICKS(SDS011_ON_DURATION * 1000));
+
+		/** Read the data (which is the latest when data queue size is 1). */
+		if (sds011_recv_data_from_queue(&rx_packet, 0) == SDS011_OK) {
+			float pm2_5;
+			float pm10;
+
+			pm2_5 = ((rx_packet.payload_query_data.pm2_5_high << 8) |
+			rx_packet.payload_query_data.pm2_5_low) /10.0;
+			pm10 = ((rx_packet.payload_query_data.pm10_high << 8) |
+			rx_packet.payload_query_data.pm10_low) /10.0;
+
+			ESP_LOGI("task_sds011", "PM2.5: %.2f\n"
+									"PM10: %.2f\n",pm2_5, pm10);
+			data.D=pm2_5;
+			data.D10=pm10;
+			enable_lora_send = true;
+			/** Set the sensor to sleep. */
+			sds011_send_cmd_to_queue(&sds011_tx_sleep_packet, 0);
+			ESP_LOGI("Sleep", "Send cmd to sds011 sleep\n");
+			vTaskDelay(1000/ portTICK_PERIOD_MS);
+			enable_sleep = true;
+			vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(PRINT_INTERVAL * 1000));
+
+		}
+	}
+}
+////////////////////////////////////////////////////////////////////////////
 
 static bool adc_calibration_init(void)
 {
@@ -51,10 +125,9 @@ static bool adc_calibration_init(void)
     return cali_enable;
 }
 void task_adc(void *pvParameters){
-	float voMeasured = 0;
-	float calcVoltage = 0;
-	float dustDensity = 0;
 	uint32_t adc_raw[3];
+	float Vrl;
+	float ppm;
     bool cali_enable = adc_calibration_init();
 
     ESP_ERROR_CHECK(adc1_config_width(ADC_WIDTH_BIT_DEFAULT));
@@ -65,58 +138,63 @@ void task_adc(void *pvParameters){
 	gpio_set_level(GPIO_NUM_32, 1);
     while (1) {
 		gpio_set_level(GPIO_NUM_32, 0);
-		vTaskDelay(0.28/ portTICK_PERIOD_MS);
-		adc_raw[0]= adc1_get_raw(PM25);
-			if (cali_enable) {
-			voMeasured = esp_adc_cal_raw_to_voltage(adc_raw[0], &adc1_chars);
-		}
-		vTaskDelay(0.044/ portTICK_PERIOD_MS);
-		gpio_set_level(GPIO_NUM_32, 1);
-		vTaskDelay(9.68/ portTICK_PERIOD_MS);
-		calcVoltage = voMeasured * (3.0 / 1024);
-		dustDensity = 0.17 * calcVoltage - 0.1;
-		data.D=dustDensity;
-		ESP_LOGI("ADC", "raw  data PM2.5: %d", adc_raw[0]);
-		ESP_LOGI("ADC", "voMeasured PM2.5 : %f", voMeasured);
-		ESP_LOGI("ADC", "calcVoltage PM2.5: %f",calcVoltage);
-		ESP_LOGI("ADC", "dustDensity PM2.5: %f",dustDensity);
-
 
         adc_raw[1]= adc1_get_raw(UV);
         if (cali_enable) {
-            data.UV = esp_adc_cal_raw_to_voltage(adc_raw[1], &adc1_chars);
+			int adc_uv;
+			adc_uv= esp_adc_cal_raw_to_voltage(adc_raw[1], &adc1_chars);
+			if (adc_uv > 0 && adc_uv <= 277) 
+				data.UV = 0;
+			else if (adc_uv > 227 && adc_uv <= 318) 
+				data.UV = 1;
+			
+			else if (adc_uv > 318 && adc_uv <= 408) 
+				data.UV = 2;
+			
+			else if (adc_uv > 408 && adc_uv <= 503) 
+				data.UV = 3;
+
+			else if (adc_uv > 503 && adc_uv <= 606) 
+				data.UV = 4;
+
+			else if (adc_uv > 606 && adc_uv <= 696) 
+				data.UV = 5;
+
+			else if (adc_uv > 696 && adc_uv <= 795) 
+				data.UV = 6;
+			
+			else if (adc_uv > 795 && adc_uv <= 881) 
+				data.UV = 7;
+			
+			else if (adc_uv > 881 && adc_uv <= 976) 
+				data.UV = 8;
+			
+			else if (adc_uv > 976 && adc_uv <= 1079) 
+				data.UV = 9;
+			
+			else if (adc_uv > 1079 && adc_uv <= 1170) 
+				data.UV = 10;
+			else if (adc_uv > 1170) 
+				data.UV = 11;
+            //data.UV = esp_adc_cal_raw_to_voltage(adc_raw[1], &adc1_chars);
         }
-        ESP_LOGI("ADC", "raw  data UV: %d", adc_raw[1]);
-		ESP_LOGI("ADC", "voltage UV: %d", data.UV);
 
-		adc_raw[2]= adc1_get_raw(MQ);
-		data.CO=adc_raw[2];
-        // if (cali_enable) {
-        //     data.UV = esp_adc_cal_raw_to_voltage(adc_raw[2], &adc1_chars);
-        // }
-        ESP_LOGI("ADC", "raw  data MQ: %d", adc_raw[2]);
-		ESP_LOGI("ADC", "data.CO %d", data.CO);
+		ESP_LOGI("task_adc", "======UV======");
+        ESP_LOGI("task_adc", "raw  data UV: %d", adc_raw[1]);
+		ESP_LOGI("task_adc", "voltage UV: %d", data.UV);
 
+		Vrl = adc1_get_raw(MQ) * (3.3/4095);             
+		ppm= 3.027*exp(1.0698*( Vrl ));                   
+		data.CO=ppm;
+		
+		ESP_LOGI("task_adc", "======CO======");
+        ESP_LOGI("task_adc", "raw  data MQ: %d", adc1_get_raw(MQ));
+		ESP_LOGI("task_adc", "CO %f ppm", ppm);
+	
         vTaskDelay(1000/ portTICK_PERIOD_MS);
     }
 }
 
-void task_tx(void *data)
-{
-	ESP_LOGI(pcTaskGetName(NULL), "Start");
-	uint8_t buf[256]; // Maximum Payload size of SX1276/77/78/79 is 255
-    struct Data *data_parsed;
-	data_parsed = data;
-	uint8_t ID=1;
-	while(1) {
-		//"{\"ID\":\"1\",\"TP\":\"30\",\"HM\":\"60\",\"UV\":\"50\"}"
-		int send_len = sprintf((char *)buf,"{\"ID\":\"%d\",\"CO2\":\"%d\",\"CO\":\"%d\",\"UV\":\"%d\",\"H\":\"%f\",\"T\":\"%f\",\"D\":\"%f\"}",
-										ID,data_parsed->CO2,data_parsed->CO,data_parsed->UV,data_parsed->HM,data_parsed->TP,data_parsed->D);
-		lora_send_packet(buf, send_len);
-		//ESP_LOGI(pcTaskGetName(NULL), "TEMP: %d, HUM: %d, UV: %d",data_parsed->TP,data_parsed->HM,data_parsed->UV);
-		vTaskDelay(5000/ portTICK_PERIOD_MS);
-	} // end while
-}
 
 void task_sht30(void *arg){
     esp_err_t res;
@@ -142,16 +220,36 @@ void task_sht30(void *arg){
         vTaskDelayUntil(&last_wakeup, pdMS_TO_TICKS(10000));
     }
 }
-void task_mhz19(void *arg){
-    ESP_LOGI("task_mhz19", "Init Uart");
-    init_uart();
-	set_self_calibration(true);
-	while (1)
-	{
-		int co2 = read_co2();
-		data.CO2=co2;
-		ESP_LOGI("task_mhz19", "Co2: %i ppm", co2);
-		vTaskDelay(100/ portTICK_PERIOD_MS);
+
+void task_tx(void *data)
+{
+	ESP_LOGI(pcTaskGetName(NULL), "Start");
+	uint8_t buf[255]; // Maximum Payload size of SX1276/77/78/79 is 255
+    struct Data *data_parsed;
+	data_parsed = data;
+	int ID=1;
+	while(1) {
+		if (enable_lora_send) {
+			int send_len = sprintf((char *)buf,"{\"ID\":\"%d\",\"CO\":\"%f\",\"UV\":\"%d\",\"H\":\"%f\",\"T\":\"%f\",\"D\":\"%f\",\"D10\":\"%f\"}",
+											ID,data_parsed->CO,data_parsed->UV,data_parsed->HM,data_parsed->TP,data_parsed->D,data_parsed->D10);
+
+			// int send_len = sprintf((char *)buf,"{\"ID\":\"%d\",\"CO\":\"%d\",\"UV\":\"%d\",\"H\":\"%f\",\"T\":\"%f\",\"D\":\"%f\",\"D10\":\"%f\"}",
+			//  								1,563,456,76.6,33.2,10.3,20.4);
+			ESP_LOGI(pcTaskGetName(NULL), "Sending");
+			lora_send_packet(buf, send_len);
+			vTaskDelay(1000/ portTICK_PERIOD_MS);
+		}
+		
+		/** Wait for next interval time. */
+		if (enable_sleep) {
+			const int wakeup_time_sec = 120; 
+			enable_sleep = false;
+			esp_sleep_enable_timer_wakeup(wakeup_time_sec * 1000000);
+			ESP_LOGI("Sleep", "Entering lora deep sleep\n");
+			lora_sleep();
+			esp_deep_sleep_start();
+		}
+			
 	}
 }
 void app_main()
@@ -210,25 +308,20 @@ void app_main()
 	//int sf = lora_get_spreading_factor();
 	ESP_LOGI(pcTaskGetName(NULL), "spreading_factor=%d", sf);
 
-// #if CONFIG_SENDER
-	// xTaskCreate(&task_adc, "task_adc", 4096, NULL, 1, NULL);
-	// xTaskCreate(&task_tx, "task_tx", 4096, &data, 1, NULL);
-	// xTaskCreate(&task_sht30, "task_sht30", 4096, NULL, 1, NULL);
+	/** Initialize the SDS011. */
+	sds011_begin(SDS011_UART_PORT, SDS011_TX_GPIO, SDS011_RX_GPIO);
+
 
 	ESP_ERROR_CHECK(i2cdev_init());
 	memset(&dev, 0, sizeof(sht3x_t));
 
 	ESP_ERROR_CHECK(sht3x_init_desc(&dev, 0x44, 0, 4, 5));
 	ESP_ERROR_CHECK(sht3x_init(&dev));
-
+	
+	assert(xTaskCreatePinnedToCore(data_task, "sds011", 2048, NULL, 2, NULL, 1) == pdTRUE);
 	xTaskCreate(&task_sht30, "task_sht30" ,4096, NULL, 6, NULL);
-	xTaskCreate(&task_mhz19, "task_mhz19", 4096, NULL, 5, NULL);
 	xTaskCreate(&task_adc, "task_adc", 4096, NULL, 4, NULL);
+	xTaskCreate(&task_tx, "task_tx", 4096, &data, 0, NULL);
 
-	xTaskCreate(&task_tx, "task_tx", 4096, &data, 1, NULL);
 // #endif
-// #if CONFIG_RECEIVER
-// 	xTaskCreate(&task_rx, "task_rx", 4096, NULL, 1, NULL);
-// #endif
-
 }
