@@ -42,7 +42,38 @@ typedef struct
    int min;
 }fb_data_t;
 
+typedef struct 
+{
+   float CO;//CO
+   float UV;//UV
+   float H; //Humi
+   float T; //Temp
+   float D; //Dust2.5
+   float D10; //Dust10
+   int fan;
+   int window;
+   char mode[10];
+
+}fb_get_data;
+
+typedef struct 
+{
+   int fan;//state of device
+   int window;//state of device
+   
+}fb_data_cotrol;
+
+typedef struct 
+{
+   char mode[10];
+}fb_data_mode;
+
 esp_err_t _http_event_handler(esp_http_client_event_t *evt);
 void firebase_task_realtime(void* param);
 void firebase_task_timestamp(void* param);
+void firebase_task_get();
+void firebase_task_get_node1();
+void firebase_task_get_node2();
+void firebase_task_control(void* param);
+void firebase_task_mode(void* param);
 #endif

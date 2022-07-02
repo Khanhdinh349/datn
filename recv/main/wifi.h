@@ -16,8 +16,8 @@
 #include "lwip/err.h"
 #include "lwip/sys.h"
 
-#define SSID "tPhone"
-#define PASS "00112233"
+#define SSID "1B KMT"
+#define PASS "a1234567"
 
 static esp_err_t event_handler(void *ctx, system_event_t *event);
 void wifi_connection_start(void);

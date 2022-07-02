@@ -176,7 +176,6 @@ void task_adc(void *pvParameters){
 				data.UV = 10;
 			else if (adc_uv > 1170) 
 				data.UV = 11;
-            //data.UV = esp_adc_cal_raw_to_voltage(adc_raw[1], &adc1_chars);
         }
 
 		ESP_LOGI("task_adc", "======UV======");
