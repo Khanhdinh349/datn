@@ -37,17 +37,21 @@
 
 #define SERVO_PULSE_GPIO        (26)   // GPIO connects to the PWM signal line
 
+static const char *TAG = "ESP32 GATEWAY";
+
 extern fb_get_data data_get;
 extern fb_get_data data_node1;
 extern fb_get_data data_node2;
-static const char *TAG = "ESP32 GATEWAY";
-bool flagControl =false;
+
+bool flagControl = false;
+bool emc1 = false;
+bool emc2 = false;
 
 fb_data_t data_fb;
 fb_data_cotrol data_control;
 fb_data_mode data_mode;
 
-void time_task(){ 
+void time_task(){  
 	ESP_LOGI("TIME","Start TIMER");
     time_t now;
     struct tm timeinfo;
@@ -105,7 +109,7 @@ void time_task(){
 				vTaskDelay(2000 / portTICK_PERIOD_MS);
 			}
 		}
-		vTaskDelay(10000 / portTICK_PERIOD_MS);
+		vTaskDelay(5000 / portTICK_PERIOD_MS);
 	}
 }
 void JSON_Analyze(const cJSON *const root)
@@ -133,12 +137,12 @@ void JSON_Analyze(const cJSON *const root)
 					ESP_LOGI("JSON", "%f", data_fb.CO);
 				}
 			}
-			if(strcmp(string,"UV")==0){
+			if(strcmp(string,"GAS")==0){
 				if (cJSON_IsString(current_element))
 				{
 					char *valuestring = current_element->valuestring;
-					data_fb.UV=atof(valuestring);
-					ESP_LOGI("JSON", "%f", data_fb.UV);
+					data_fb.GAS=atof(valuestring);
+					ESP_LOGI("JSON", "%f", data_fb.GAS);
 				}
 			}
 			if(strcmp(string,"H")==0){
@@ -210,8 +214,27 @@ void task_lcd(){
 		lcd_setCursor(0, 0);
 		lcd_print(screen);
 		vTaskDelay(1000 / portTICK_PERIOD_MS);
+
+		//Devices
+		lcd_clear();
+		lcd_setCursor(0, 0);
+		if(data_get.fan ==1){
+			sprintf(screen,"Fan: On");
+		}else{	
+			sprintf(screen,"Fan: Off");
+		}
+		lcd_print(screen);
+		lcd_setCursor(0, 1);
+		
+		if(data_get.window ==1){
+			sprintf(screen1,"Window: Open");
+		}else{
+			sprintf(screen1,"Window: Close");		
+		}
+		
+		lcd_print(screen1);
+		vTaskDelay(1000 / portTICK_PERIOD_MS);
 		//NODE1
-		//firebase_task_get_node1();
 
 		lcd_clear();
 		sprintf(screen,"NODE 1");
@@ -238,7 +261,6 @@ void task_lcd(){
 		vTaskDelay(2000 / portTICK_PERIOD_MS);
 
 		//NODE2
-		//firebase_task_get_node2();
 		lcd_clear();
 		sprintf(screen,"NODE 2");
 		lcd_setCursor(0, 0);
@@ -252,6 +274,12 @@ void task_lcd(){
 		sprintf(screen1,"CO: %.1f",data_node2.CO);
 		lcd_setCursor(0, 1);
 		lcd_print(screen1);
+		vTaskDelay(2000 / portTICK_PERIOD_MS);
+
+		lcd_clear();
+		sprintf(screen,"GAS: %.1f",data_node2.GAS);
+		lcd_setCursor(0, 0);
+		lcd_print(screen);
 		vTaskDelay(2000 / portTICK_PERIOD_MS);
 		
 		lcd_clear();
@@ -303,133 +331,166 @@ void task_servo(int angle){
 	ESP_ERROR_CHECK(mcpwm_set_duty_in_us(MCPWM_UNIT_0, MCPWM_TIMER_0, MCPWM_OPR_A, result));
 	vTaskDelay(pdMS_TO_TICKS(100));
 }
+void buzzer(){
+	while (1){
+		while(emc1 || emc2){
+		ESP_LOGI("buzzer","buzzer............");
+		gpio_pad_select_gpio(GPIO_NUM_12);  
+		gpio_set_direction(GPIO_NUM_12, GPIO_MODE_OUTPUT);
+		gpio_set_level(GPIO_NUM_12, 1);
+		vTaskDelay(2000/ portTICK_PERIOD_MS);
+		gpio_set_level(GPIO_NUM_12, 0);
+		vTaskDelay(1000/ portTICK_PERIOD_MS);
+		}
+		vTaskDelay(1000/ portTICK_PERIOD_MS);
+	}
+}	
 void task_control(){
 	btn_init();
-	int fan=data_get.fan;
-	int window=data_get.window;
-	while (1){
+	int fan=0;
+	int window=0;
+
+	while (1){		
 		int level16 = gpio_get_level(GPIO_NUM_16);
 		int level22 = gpio_get_level(GPIO_NUM_22);	
 		int level21 = gpio_get_level(GPIO_NUM_21);
 
 		gpio_pad_select_gpio(GPIO_NUM_14);  
 		gpio_set_direction(GPIO_NUM_14, GPIO_MODE_OUTPUT);
+
 		if(!level16 || !level21 || !level22){
+			emc1 = false;
+			emc2 = false;
 			if(!level22){
-				ESP_LOGI("task_control_get","Change mode");
-				data_control.fan = 0;
-				data_control.window = 0;
+				ESP_LOGI("task_control_get","Change mode");			
 				if(strcmp(data_get.mode,"auto")==0){
 					strcpy(data_mode.mode,"manual");
-					firebase_task_mode(&data_mode);
-					firebase_task_control(&data_control);
+					firebase_task_mode(&data_mode);				
 				}else{
 					strcpy(data_mode.mode,"auto");	
-					firebase_task_mode(&data_mode);
-					firebase_task_control(&data_control);
+					firebase_task_mode(&data_mode);	
 				}	
-				vTaskDelay(10/ portTICK_PERIOD_MS);
+				vTaskDelay(300/ portTICK_PERIOD_MS);
 			}	
 			if(!level21){
-				ESP_LOGI("task_control_get","Change level 21");
-				window=data_get.window;
+			ESP_LOGI("task_control_get","Change level 21");
+			window=data_get.window;
+
+			if(strcmp(data_get.mode,"auto")==0){
 				strcpy(data_mode.mode,"manual");
-				if(data_get.fan == 0){
-					ESP_LOGI("task_btn","btn22 on %d", level22);
-					gpio_set_level(GPIO_NUM_14, 1);
-					fan=1;	
-					data_control.fan = fan;
-				}else{
-					ESP_LOGI("task_btn","btn22 off %d", level22);
-					gpio_set_level(GPIO_NUM_14, 0);
-					fan=0;
-					data_control.fan = fan;				
-				}
-				firebase_task_control(&data_control);
-				vTaskDelay(10/ portTICK_PERIOD_MS);
 				firebase_task_mode(&data_mode);
-				vTaskDelay(10/ portTICK_PERIOD_MS);
+			}
+
+			if(data_get.fan == 0){
+				ESP_LOGI("task_btn","btn22 on %d", level22);
+				gpio_set_level(GPIO_NUM_14, 1);
+				fan=1;	
+				data_control.fan = fan;	
+			}else{
+				ESP_LOGI("task_btn","btn22 off %d", level22);
+				gpio_set_level(GPIO_NUM_14, 0);
+				fan=0;
+				data_control.fan = fan;			
+			}
+			firebase_task_control(&data_control);
+			vTaskDelay(300/ portTICK_PERIOD_MS);
 			}
 			if(!level16){
 				ESP_LOGI("task_control_get","Change level 22");
 				fan=data_get.fan;
-				strcpy(data_mode.mode,"manual");
+
 				if(data_get.window == 0){
-					ESP_LOGI("task_btn","btn4 on %d", level21);
-					task_servo(90);
+					ESP_LOGI("task_btn","btn4 on %d",level16 );
+					task_servo(-180);
 					window=1;
 					data_control.window = window;
+			
 				}else{
-					ESP_LOGI("task_btn","btn4 off %d",level21);
-					task_servo(-90);
+					ESP_LOGI("task_btn","btn4 off %d",level16);
+					task_servo(180);
 					window=0;	
-					data_control.window = window;
-				};
-				firebase_task_control(&data_control);
-				firebase_task_mode(&data_mode);
-				vTaskDelay(10/ portTICK_PERIOD_MS);
+					data_control.window = window;	
+				}
+				if(strcmp(data_get.mode,"auto")==0){
+					strcpy(data_mode.mode,"manual");
+					firebase_task_mode(&data_mode);
+				}
+				firebase_task_control(&data_control);	
+				vTaskDelay(300/ portTICK_PERIOD_MS);
 			}	
+			vTaskDelay(2000/ portTICK_PERIOD_MS);
 		}
-		else{
+		if(strcmp(data_get.mode,"manual")==0){
+			emc1=false;
+			emc2=false;
 			if(data_get.fan != fan){
 				if(data_get.fan == 1){
 					fan =1;
-				ESP_LOGI("task_control_get","control get fan ");
-				gpio_set_level(GPIO_NUM_14, 1);
+					ESP_LOGI("task_control_get","control get fan ");
+					gpio_set_level(GPIO_NUM_14, 1);
 				}else{
 					fan =0;
-				ESP_LOGI("task_control_get","control get fan");
-				gpio_set_level(GPIO_NUM_14, 0);
+					ESP_LOGI("task_control_get","control get fan");
+					gpio_set_level(GPIO_NUM_14, 0);
 				}
 			}
 			if(data_get.window != window){
 				if(data_get.window == 1){
 					window =1;
 					ESP_LOGI("task_control_get","control get window");
-					task_servo(90);
+					task_servo(-180);
 				}else {
 					window =0;
 					ESP_LOGI("task_control_get","control get window");
-					task_servo(-90);
+					task_servo(180);
 				}
 			}	
 		}
-		if(strcmp(data_get.mode,"auto")==0){
+		else if(strcmp(data_get.mode,"auto")==0){
 			fan=data_get.fan;
 			window=data_get.window;
-			if(data_get.CO <= data_node1.CO || data_get.D <= data_node1.D || data_get.D10 <= data_node1.D10){
-				if(data_control.fan!=1){
+			if(data_get.CO <= data_node1.CO || data_get.GAS <= data_node1.GAS || data_get.D <= data_node1.D || data_get.D10 <= data_node1.D10){
+				emc1=true;
+				ESP_LOGI("control","FAN ON");
+				if( data_get.fan !=1){
 					gpio_set_level(GPIO_NUM_14, 1);
 					fan=1;	
 					data_control.fan = fan;	
 					firebase_task_control(&data_control);
+					vTaskDelay(200/ portTICK_PERIOD_MS);
 				}
-			}else{
-				if(data_control.fan!=0){
+			}else if(data_get.CO > data_node1.CO && data_get.D > data_node1.D && data_get.D10 > data_node1.D10){
+				emc1=false;
+				if( data_get.fan!= 0){
 					gpio_set_level(GPIO_NUM_14, 0);
 					fan=0;	
 					data_control.fan = fan;	
 					firebase_task_control(&data_control);
+					vTaskDelay(200/ portTICK_PERIOD_MS);
 				}	
 			}	
-			if(data_get.CO <= data_node2.CO || data_get.D <= data_node2.D || data_get.D10 <= data_node2.D10){
-				if(data_control.window!=1){
+			if(data_get.CO <= data_node2.CO|| data_get.GAS <= data_node2.GAS || data_get.D <= data_node2.D || data_get.D10 <= data_node2.D10){
+				emc2=true;
+				ESP_LOGI("control","WINDOW OPEN");
+				if( data_get.window !=1){
 					window=1;
-					task_servo(90);	
+					task_servo(-180);	
 					data_control.window = window;
 					firebase_task_control(&data_control);
+					vTaskDelay(200/ portTICK_PERIOD_MS);
 				}
-			}else{
-				if(data_control.window!=0){
+			}else if(data_get.CO > data_node2.CO && data_get.D > data_node2.D && data_get.D10 > data_node2.D10){
+				emc2=false;
+				if(data_get.window!=0){
 					window=0;
-					task_servo(-90);	
+					task_servo(180);	
 					data_control.window = window;
 					firebase_task_control(&data_control);
+					vTaskDelay(200/ portTICK_PERIOD_MS);
 				}
-			}		
-			vTaskDelay(100/ portTICK_PERIOD_MS);
+			}	
 		}
-	vTaskDelay(100/ portTICK_PERIOD_MS);
+	vTaskDelay(200/ portTICK_PERIOD_MS);
 	}
 }
 void app_main(){
@@ -437,7 +498,7 @@ void app_main(){
 		ESP_LOGE(pcTaskGetName(NULL), "Does not recognize the module");
 		while (1)
 		{
-			vTaskDelay(1);
+			vTaskDelay(10);
 		}
 	}
 #if CONFIG_169MHZ
@@ -464,11 +525,7 @@ void app_main(){
 	int cr = 1;
 	int bw = 9;
 	int sf = 12;
-#if CONFIF_ADVANCED
-	cr = CONFIG_CODING_RATE
-	bw = CONFIG_BANDWIDTH;
-	sf = CONFIG_SF_RATE;
-#endif
+
 	lora_set_coding_rate(cr);
 	lora_set_bandwidth(bw);
 	lora_set_spreading_factor(sf);
@@ -476,12 +533,12 @@ void app_main(){
 	wifi_connection_begin();
 	wifi_connection_start();
 	
-	xTaskCreate(&task_rx, "task_rx", 4*1024, NULL, 5, NULL);
-	xTaskCreate(&task_control, "task_control", 4*1024, NULL, 4, NULL);
-	
-	xTaskCreate(&task_lcd, "task_lcd", 4*1024, NULL, 2, NULL);
-	xTaskCreate(&firebase_task_get, "firebase_task_get", 4*1024, NULL, 1, NULL);
-	xTaskCreate(&firebase_task_get_node1, "firebase_task_get_node1", 4*1024, NULL, 0, NULL);
-	xTaskCreate(&firebase_task_get_node2, "firebase_task_get_node2", 4*1024, NULL, 0, NULL);
+	xTaskCreate(&task_rx, "task_rx", 4*1024, NULL, 6, NULL);
+	xTaskCreate(&task_control, "task_control", 6*1024, NULL, 5, NULL);
+	xTaskCreate(&task_lcd, "task_lcd", 4*1024, NULL, 4, NULL);
+	xTaskCreate(&firebase_task_get, "firebase_task_get", 6*1024, NULL, 3, NULL);
+	xTaskCreate(&firebase_task_get_node1, "firebase_task_get_node1", 4*1024, NULL, 2, NULL);
+	xTaskCreate(&firebase_task_get_node2, "firebase_task_get_node2", 4*1024, NULL, 1, NULL);
 	xTaskCreate(&time_task, "time_task", 10*1024, NULL, 0, NULL);
+	xTaskCreate(&buzzer, "buzzer", 2*1024, NULL, 0, NULL);
 }

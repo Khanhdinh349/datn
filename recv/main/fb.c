@@ -62,42 +62,42 @@ void firebase_task_realtime(void* param){
     char data[128];
     char url[128];
     char nodeAddress[10];
+    bool status= true;
     fb_data_t fb=*((fb_data_t*)param);
     if(fb.ID!=0){
         sprintf(nodeAddress,"n%d",fb.ID);
-        sprintf(data,"{\"CO\":%f,\"UV\":%f,\"H\":%f,\"T\":%f,\"D\":%f,\"D10\":%f}", fb.CO, fb.UV,fb.H,fb.T,fb.D,fb.D10);
-
+        sprintf(data,"{\"CO\":%.2f,\"GAS\":%.2f,\"H\":%.2f,\"T\":%.2f,\"D\":%.2f,\"D10\":%.2f}", fb.CO, fb.GAS,fb.H,fb.T,fb.D,fb.D10);
         // Create url
         sprintf(url, "https://%s/node/%s/%s.json",firebaseAddress,nodeAddress,nodeAddress);
-        
-        esp_http_client_config_t config = {
-            .url = url,
-            .event_handler = _http_event_handler,
-        };
+        do{
+            esp_http_client_config_t config = {
+                .url = url,
+                .event_handler = _http_event_handler,
+            };
+            esp_http_client_handle_t client = esp_http_client_init(&config);
+            esp_http_client_set_method(client, HTTP_METHOD_PUT);
+            if (esp_http_client_open(client, strlen(data)) == ESP_OK) {
+                ESP_LOGI("Firebase", "Connection opened");
+                esp_http_client_write(client, data, strlen(data));
 
-        esp_http_client_handle_t client = esp_http_client_init(&config);
-
-        esp_http_client_set_method(client, HTTP_METHOD_PUT);
-
-        if (esp_http_client_open(client, strlen(data)) == ESP_OK) {
-            ESP_LOGI("Firebase", "Connection opened");
-            esp_http_client_write(client, data, strlen(data));
-
-            esp_http_client_fetch_headers(client);
-            //ESP_LOGI("Firebase", "HTTP POST Status = %d, content_length = %d", esp_http_client_get_status_code(client), esp_http_client_get_content_length(client));
-            if (esp_http_client_get_status_code(client)==200){
-                ESP_LOGI("firebase_task_realtime", "Message successfuly sent!");
+                esp_http_client_fetch_headers(client);
+                //ESP_LOGI("Firebase", "HTTP POST Status = %d, content_length = %d", esp_http_client_get_status_code(client), esp_http_client_get_content_length(client));
+                if (esp_http_client_get_status_code(client)==200){
+                    status =false;
+                    ESP_LOGI("firebase_task_realtime", "Message successfuly sent!");
+                }
+                else {
+                    ESP_LOGI("firebase_task_realtime", "Sending message failed!");
+                }
+                esp_http_client_close(client);
+                esp_http_client_cleanup(client);
+                
             }
             else {
-                ESP_LOGI("firebase_task_realtime", "Sending message failed!");
+                ESP_LOGE("Firebase", "Connection failed");
             }
-            esp_http_client_close(client);
-            esp_http_client_cleanup(client);
-            
-        }
-        else {
-            ESP_LOGE("Firebase", "Connection failed");
-        }
+        } while (status);
+        
     }
     vTaskDelay(500 / portTICK_PERIOD_MS);
 }
@@ -107,52 +107,43 @@ void firebase_task_timestamp(void* param){
     char nodeAddress[10];
     char nodeHour[3];
     char nodeHourMin[3];
+    bool status=true;
     fb_data_t fb=*((fb_data_t*)param);
     if(fb.ID!=0){
         sprintf(nodeAddress,"n%d",fb.ID);
-        printf("DEBUG: fb.ID = %d\n", fb.ID);
-        sprintf(data,"{\"CO\":%f,\"UV\":%f,\"H\":%f,\"T\":%f,\"D\":%f,\"D10\":%f}", fb.CO, fb.UV,fb.H,fb.T,fb.D,fb.D10);
+        sprintf(data,"{\"CO\":%.2f,\"GAS\":%.2f,\"H\":%.2f,\"T\":%.2f,\"D\":%.2f,\"D10\":%.2f}", fb.CO, fb.GAS,fb.H,fb.T,fb.D,fb.D10);
         sprintf(nodeHour,"%d",fb.hour);
         sprintf(nodeHourMin,"%d",fb.min);
         // Create url
         sprintf(url, "https://%s/node/%s/%s-%s/%s.json",firebaseAddress,nodeAddress,nodeAddress,nodeHour,nodeHourMin);
-        
-        esp_http_client_config_t config = {
-            .url = url,
-            .event_handler = _http_event_handler,
-        };
+        do{
+            esp_http_client_config_t config = {
+                .url = url,
+                .event_handler = _http_event_handler,
+            };
+            esp_http_client_handle_t client = esp_http_client_init(&config);
+            esp_http_client_set_method(client, HTTP_METHOD_PUT);
+            if (esp_http_client_open(client, strlen(data)) == ESP_OK) {
+                ESP_LOGI("Firebase", "Connection opened");
+                esp_http_client_write(client, data, strlen(data));
 
-        esp_http_client_handle_t client = esp_http_client_init(&config);
-
-        esp_http_client_set_method(client, HTTP_METHOD_PUT);
-
-        if (esp_http_client_open(client, strlen(data)) == ESP_OK) {
-            ESP_LOGI("Firebase", "Connection opened");
-            esp_http_client_write(client, data, strlen(data));
-
-            esp_http_client_fetch_headers(client);
-            ESP_LOGI("Firebase", "HTTP POST Status = %d, content_length = %d", esp_http_client_get_status_code(client), esp_http_client_get_content_length(client));
-            if (esp_http_client_get_status_code(client)==200){
-                ESP_LOGI("Firebase", "Message successfuly sent!");
+                esp_http_client_fetch_headers(client);
+                ESP_LOGI("Firebase", "HTTP POST Status = %d, content_length = %d", esp_http_client_get_status_code(client), esp_http_client_get_content_length(client));
+                if (esp_http_client_get_status_code(client)==200){
+                    status = false;
+                    ESP_LOGI("Firebase", "Message successfuly sent!");
+                }
+                else {
+                    ESP_LOGI("Firebase", "Sending message failed!");
+                }
+                esp_http_client_close(client);
+                esp_http_client_cleanup(client);
+            
+            }else {
+            ESP_LOGE("Firebase", "Connection failed");
             }
-            else {
-                ESP_LOGI("Firebase", "Sending message failed!");
-            }
-            esp_http_client_close(client);
-            esp_http_client_cleanup(client);
-        
-        }else {
-        ESP_LOGE("Firebase", "Connection failed");
-        }
-        data_fb.ID= 0;
-        data_fb.CO=0;
-        data_fb.UV=0;
-        data_fb.H=0;
-        data_fb.T=0;
-        data_fb.D=0;
-        data_fb.D10=0;
-        data_fb.hour=0;
-        data_fb.min=0;
+            data_fb.ID= 0;
+        } while (status);      
     }
     vTaskDelay(500 / portTICK_PERIOD_MS);
 }
@@ -160,8 +151,6 @@ void firebase_task_timestamp(void* param){
 void firebase_task_get(){
     while (1){
         char url[128];
-        //ESP_LOGI("firebase_task_get", "get data from firebase");
-        // Create url
         sprintf(url, "https://%s/control/.json",firebaseAddress);
         esp_http_client_config_t config = {
             .url = url,
@@ -201,12 +190,14 @@ void firebase_task_get(){
             float CO=cJSON_GetObjectItem(element,"CO")->valuedouble;
             float D=cJSON_GetObjectItem(element,"D")->valuedouble;
             float D10=cJSON_GetObjectItem(element,"D10")->valuedouble;
+            float GAS=cJSON_GetObjectItem(element,"GAS")->valuedouble;
 
             data_get.fan = fan;
             data_get.window = window;
             data_get.CO = CO;
             data_get.D = D;
             data_get.D10 = D10;
+            data_get.GAS = GAS;
             strcpy(data_get.mode,mode);
 
             cJSON_Delete(root);
@@ -220,14 +211,15 @@ void firebase_task_get(){
     }
 }
 void firebase_task_control(void* param){
-    //while (1){
-        char data[128];
-        char url[128];
-        fb_data_cotrol fb_push=*((fb_data_cotrol*)param);
-        //if(flagControl){
-            sprintf(data,"{\"fan\":%d,\"window\":%d}",fb_push.fan,fb_push.window);
-            // Create url
-            sprintf(url, "https://%s/control/device/.json",firebaseAddress);
+    char data[128];
+    char url[128];
+    bool status= true;
+    fb_data_cotrol fb_push=*((fb_data_cotrol*)param);
+    //if(flagControl){
+        sprintf(data,"{\"fan\":%d,\"window\":%d}",fb_push.fan,fb_push.window);
+        // Create url
+        sprintf(url, "https://%s/control/device/.json",firebaseAddress);
+        do{
             esp_http_client_config_t config = {
                 .url = url,
                 .event_handler = _http_event_handler,
@@ -239,6 +231,7 @@ void firebase_task_control(void* param){
                 esp_http_client_write(client, data, strlen(data));
                 esp_http_client_fetch_headers(client);
                 if (esp_http_client_get_status_code(client)==200){
+                    status = false;
                     ESP_LOGI("firebase_task_control", "Message successfuly sent!");
                 }
                 else {
@@ -250,46 +243,50 @@ void firebase_task_control(void* param){
             else {
                 ESP_LOGE("firebase_task_control", "Connection failed");
             } 
-        //}
-        //flagControl=false;
-        //vTaskDelete(NULL);
-        vTaskDelay(100/portTICK_PERIOD_MS);  
-    //}    
+        } while (status);           
+    vTaskDelay(200/portTICK_PERIOD_MS);    
 }
 void firebase_task_mode(void* param){
     //while (1){
         char data[128];
         char url[128];
         char mode[10];
+        bool status = true;
         fb_data_mode fb_mode=*((fb_data_mode*)param);
         strcpy(mode,fb_mode.mode);
 
         sprintf(data,"{\"mode\":\"%s\"}",mode);
         // Create url
         sprintf(url, "https://%s/control/config.json",firebaseAddress);
-        esp_http_client_config_t config = {
+        do
+        {
+            esp_http_client_config_t config = {
             .url = url,
             .event_handler = _http_event_handler,
-        };
-        esp_http_client_handle_t client = esp_http_client_init(&config);
-        esp_http_client_set_method(client, HTTP_METHOD_PUT);
-        if (esp_http_client_open(client, strlen(data)) == ESP_OK) {
-            ESP_LOGI("firebase_task_mode", "Connection opened");
-            esp_http_client_write(client, data, strlen(data));
-            esp_http_client_fetch_headers(client);
-            if (esp_http_client_get_status_code(client)==200){
-                ESP_LOGI("firebase_task_mode", "Message successfuly sent!");
+             };
+            esp_http_client_handle_t client = esp_http_client_init(&config);
+            esp_http_client_set_method(client, HTTP_METHOD_PUT);
+            if (esp_http_client_open(client, strlen(data)) == ESP_OK) {
+                //ESP_LOGI("firebase_task_mode", "Connection opened");
+                esp_http_client_write(client, data, strlen(data));
+                esp_http_client_fetch_headers(client);
+                if (esp_http_client_get_status_code(client)==200){
+                    status = false;
+                    ESP_LOGI("firebase_task_mode", "Message successfuly sent!");
+                }
+                else {
+                    ESP_LOGI("firebase_task_mode", "Sending message failed!");
+                }
+                esp_http_client_close(client);
+                esp_http_client_cleanup(client);       
             }
             else {
-                ESP_LOGI("firebase_task_mode", "Sending message failed!");
-            }
-            esp_http_client_close(client);
-            esp_http_client_cleanup(client);       
-        }
-        else {
-            ESP_LOGE("firebase_task_control", "Connection failed");
+                ESP_LOGE("firebase_task_control", "Connection failed");
             } 
-        vTaskDelay(500/portTICK_PERIOD_MS); 
+        } while (status);  
+        
+        
+        vTaskDelay(100/portTICK_PERIOD_MS); 
     //}    
 }
 void firebase_task_get_node1(){
@@ -305,11 +302,6 @@ void firebase_task_get_node1(){
         esp_http_client_handle_t client = esp_http_client_init(&config);
         if (esp_http_client_open(client, 0) == ESP_OK) {
             esp_http_client_fetch_headers(client);
-            if (esp_http_client_get_status_code(client)==200){
-                ESP_LOGI("firebase_task_get_node1", "Message successfuly sent!");
-            }else {
-                ESP_LOGI("firebase_task_get_node1", "Sending message failed!");
-            }
             char valor[esp_http_client_get_content_length(client)];
             // Read the stream of data
             esp_http_client_read(client, valor, esp_http_client_get_content_length(client));
@@ -322,12 +314,14 @@ void firebase_task_get_node1(){
             float CO=cJSON_GetObjectItem(root,"CO")->valuedouble;
             float D=cJSON_GetObjectItem(root,"D")->valuedouble;
             float D10=cJSON_GetObjectItem(root,"D10")->valuedouble;
+            float GAS=cJSON_GetObjectItem(root,"GAS")->valuedouble;
         
             data_node1.CO = CO;
             data_node1.T = T;
             data_node1.H = H;
             data_node1.D = D;
             data_node1.D10 = D10;
+            data_node1.GAS = GAS;
 
             cJSON_Delete(root);
             esp_http_client_close(client);
@@ -351,11 +345,6 @@ void firebase_task_get_node2(){
         esp_http_client_handle_t client = esp_http_client_init(&config);
         if (esp_http_client_open(client, 0) == ESP_OK) {
             esp_http_client_fetch_headers(client);
-            if (esp_http_client_get_status_code(client)==200){
-                ESP_LOGI("firebase_task_get_node2", "Message successfuly sent!");
-            }else {
-                ESP_LOGI("firebase_task_get_node2", "Sending message failed!");
-            }
             char valor[esp_http_client_get_content_length(client)];
             // Read the stream of data
             esp_http_client_read(client, valor, esp_http_client_get_content_length(client));
@@ -368,12 +357,14 @@ void firebase_task_get_node2(){
             float CO=cJSON_GetObjectItem(root,"CO")->valuedouble;
             float D=cJSON_GetObjectItem(root,"D")->valuedouble;
             float D10=cJSON_GetObjectItem(root,"D10")->valuedouble;
+            float GAS=cJSON_GetObjectItem(root,"GAS")->valuedouble;
 
             data_node2.CO = CO;
             data_node2.T = T;
             data_node2.H = H;
             data_node2.D = D;
             data_node2.D10 = D10;
+            data_node2.GAS = GAS;
 
             cJSON_Delete(root);
             esp_http_client_close(client);

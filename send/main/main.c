@@ -13,10 +13,9 @@
 #include "esp_adc_cal.h"
 #include "sht30.h"
 #include "sds011.h"
-#include "mhz19.h"
 
-#define MQ          				ADC1_CHANNEL_3   //gpio num 39 
-#define UV          				ADC1_CHANNEL_6   //gpio num 34
+#define MQ7          				ADC1_CHANNEL_3   //gpio num 39 
+#define MQ4          				ADC1_CHANNEL_6   //gpio num 34
 #define PM25          				ADC1_CHANNEL_7   //gpio num 35
 #define ADC_EXAMPLE_ATTEN           ADC_ATTEN_DB_11
 #define ADC_EXAMPLE_CALI_SCHEME     ESP_ADC_CAL_VAL_EFUSE_VREF
@@ -40,7 +39,7 @@ struct Data
 {
 	float TP;
 	float HM;
-	int UV;
+	float GAS;
 	float D;
 	float D10;
 	float CO;
@@ -88,8 +87,7 @@ void data_task(void* pvParameters) {
 			pm10 = ((rx_packet.payload_query_data.pm10_high << 8) |
 			rx_packet.payload_query_data.pm10_low) /10.0;
 
-			ESP_LOGI("task_sds011", "PM2.5: %.2f\n"
-									"PM10: %.2f\n",pm2_5, pm10);
+			ESP_LOGI("task_sds011", "PM2.5: %.2f PM10: %.2f\n",pm2_5, pm10);
 			data.D=pm2_5;
 			data.D10=pm10;
 			enable_lora_send = true;
@@ -125,70 +123,34 @@ static bool adc_calibration_init(void)
     return cali_enable;
 }
 void task_adc(void *pvParameters){
-	uint32_t adc_raw[3];
-	float Vrl;
-	float ppm;
     bool cali_enable = adc_calibration_init();
 
     ESP_ERROR_CHECK(adc1_config_width(ADC_WIDTH_BIT_DEFAULT));
-    ESP_ERROR_CHECK(adc1_config_channel_atten(UV, ADC_EXAMPLE_ATTEN));
-	ESP_ERROR_CHECK(adc1_config_channel_atten(PM25, ADC_EXAMPLE_ATTEN));
+    ESP_ERROR_CHECK(adc1_config_channel_atten(MQ7, ADC_EXAMPLE_ATTEN));
 
 	gpio_set_direction(GPIO_NUM_32, GPIO_MODE_OUTPUT);
 	gpio_set_level(GPIO_NUM_32, 1);
     while (1) {
 		gpio_set_level(GPIO_NUM_32, 0);
+        
+		float a0 = adc1_get_raw(MQ4); // get raw reading from sensor
+		float v_o = a0 /( 5 * 1024); // convert reading to volts
+		float R_S = (5-v_o) * 1000 / v_o; // apply formula for getting RS
+		float GAS = pow(R_S/945,-2.95) * 1000*1000;
+		data.GAS=GAS;
+		ESP_LOGI("task_adc", "======GAS======");
+        ESP_LOGI("task_adc", "GAS: %f", GAS);
 
-        adc_raw[1]= adc1_get_raw(UV);
-        if (cali_enable) {
-			int adc_uv;
-			adc_uv= esp_adc_cal_raw_to_voltage(adc_raw[1], &adc1_chars);
-			if (adc_uv > 0 && adc_uv <= 277) 
-				data.UV = 0;
-			else if (adc_uv > 227 && adc_uv <= 318) 
-				data.UV = 1;
-			
-			else if (adc_uv > 318 && adc_uv <= 408) 
-				data.UV = 2;
-			
-			else if (adc_uv > 408 && adc_uv <= 503) 
-				data.UV = 3;
+		float sensorValue = adc1_get_raw(MQ7);
+		float sensor_volt = sensorValue/(1024*3.3);
+		float RS_gas = (3.3-sensor_volt)/sensor_volt;
+		float ratio = RS_gas/7200; //Replace R0 with the value found using the sketch above
+		float x = 1538.46 * ratio;
+		float CO = pow(x,-1.709)*1000;
+		data.CO=CO;
 
-			else if (adc_uv > 503 && adc_uv <= 606) 
-				data.UV = 4;
-
-			else if (adc_uv > 606 && adc_uv <= 696) 
-				data.UV = 5;
-
-			else if (adc_uv > 696 && adc_uv <= 795) 
-				data.UV = 6;
-			
-			else if (adc_uv > 795 && adc_uv <= 881) 
-				data.UV = 7;
-			
-			else if (adc_uv > 881 && adc_uv <= 976) 
-				data.UV = 8;
-			
-			else if (adc_uv > 976 && adc_uv <= 1079) 
-				data.UV = 9;
-			
-			else if (adc_uv > 1079 && adc_uv <= 1170) 
-				data.UV = 10;
-			else if (adc_uv > 1170) 
-				data.UV = 11;
-        }
-
-		ESP_LOGI("task_adc", "======UV======");
-        ESP_LOGI("task_adc", "raw  data UV: %d", adc_raw[1]);
-		ESP_LOGI("task_adc", "voltage UV: %d", data.UV);
-
-		Vrl = adc1_get_raw(MQ) * (3.3/4095);             
-		ppm= 3.027*exp(1.0698*( Vrl ));                   
-		data.CO=ppm;
-		
 		ESP_LOGI("task_adc", "======CO======");
-        ESP_LOGI("task_adc", "raw  data MQ: %d", adc1_get_raw(MQ));
-		ESP_LOGI("task_adc", "CO %f ppm", ppm);
+		ESP_LOGI("task_adc", "CO %f ", CO);
 	
         vTaskDelay(1000/ portTICK_PERIOD_MS);
     }
@@ -229,12 +191,11 @@ void task_tx(void *data)
 	int ID=1;
 	while(1) {
 		if (enable_lora_send) {
-			int send_len = sprintf((char *)buf,"{\"ID\":\"%d\",\"CO\":\"%f\",\"UV\":\"%d\",\"H\":\"%f\",\"T\":\"%f\",\"D\":\"%f\",\"D10\":\"%f\"}",
-											ID,data_parsed->CO,data_parsed->UV,data_parsed->HM,data_parsed->TP,data_parsed->D,data_parsed->D10);
-
-			// int send_len = sprintf((char *)buf,"{\"ID\":\"%d\",\"CO\":\"%d\",\"UV\":\"%d\",\"H\":\"%f\",\"T\":\"%f\",\"D\":\"%f\",\"D10\":\"%f\"}",
-			//  								1,563,456,76.6,33.2,10.3,20.4);
+			int send_len = sprintf((char *)buf,"{\"ID\":\"%d\",\"CO\":\"%.2f\",\"GAS\":\"%.2f\",\"H\":\"%.2f\",\"T\":\"%.2f\",\"D\":\"%.2f\",\"D10\":\"%.2f\"}",
+											ID,data_parsed->CO,data_parsed->GAS,data_parsed->HM,data_parsed->TP,data_parsed->D,data_parsed->D10);
 			ESP_LOGI(pcTaskGetName(NULL), "Sending");
+			lora_send_packet(buf, send_len);
+			vTaskDelay(500/ portTICK_PERIOD_MS);
 			lora_send_packet(buf, send_len);
 			vTaskDelay(1000/ portTICK_PERIOD_MS);
 		}
@@ -260,56 +221,39 @@ void app_main()
 		}
 	}
 
-#if CONFIG_169MHZ
-	ESP_LOGI(pcTaskGetName(NULL), "Frequency is 169MHz");
-	lora_set_frequency(169e6); // 169MHz
-#elif CONFIG_433MHZ
-	ESP_LOGI(pcTaskGetName(NULL), "Frequency is 433MHz");
-	lora_set_frequency(433e6); // 433MHz
-#elif CONFIG_470MHZ
-	ESP_LOGI(pcTaskGetName(NULL), "Frequency is 470MHz");
-	lora_set_frequency(470e6); // 470MHz
-#elif CONFIG_866MHZ
-	ESP_LOGI(pcTaskGetName(NULL), "Frequency is 866MHz");
-	lora_set_frequency(866e6); // 866MHz
-#elif CONFIG_915MHZ
-	ESP_LOGI(pcTaskGetName(NULL), "Frequency is 915MHz");
-	lora_set_frequency(915e6); // 915MHz
-#elif CONFIG_OTHER
-	ESP_LOGI(pcTaskGetName(NULL), "Frequency is %dMHz", CONFIG_OTHER_FREQUENCY);
-	long frequency = CONFIG_OTHER_FREQUENCY * 1000000;
-	lora_set_frequency(frequency);
-#endif
+	#if CONFIG_169MHZ
+		ESP_LOGI(pcTaskGetName(NULL), "Frequency is 169MHz");
+		lora_set_frequency(169e6); // 169MHz
+	#elif CONFIG_433MHZ
+		ESP_LOGI(pcTaskGetName(NULL), "Frequency is 433MHz");
+		lora_set_frequency(433e6); // 433MHz
+	#elif CONFIG_470MHZ
+		ESP_LOGI(pcTaskGetName(NULL), "Frequency is 470MHz");
+		lora_set_frequency(470e6); // 470MHz
+	#elif CONFIG_866MHZ
+		ESP_LOGI(pcTaskGetName(NULL), "Frequency is 866MHz");
+		lora_set_frequency(866e6); // 866MHz
+	#elif CONFIG_915MHZ
+		ESP_LOGI(pcTaskGetName(NULL), "Frequency is 915MHz");
+		lora_set_frequency(915e6); // 915MHz
+	#elif CONFIG_OTHER
+		ESP_LOGI(pcTaskGetName(NULL), "Frequency is %dMHz", CONFIG_OTHER_FREQUENCY);
+		long frequency = CONFIG_OTHER_FREQUENCY * 1000000;
+		lora_set_frequency(frequency);
+	#endif
 
 	lora_enable_crc();
 
 	int cr = 1;
 	int bw = 9;
 	int sf = 12;
-#if CONFIF_ADVANCED
-	cr = CONFIG_CODING_RATE
-	bw = CONFIG_BANDWIDTH;
-	sf = CONFIG_SF_RATE;
-#endif
 
 	lora_set_coding_rate(cr);
-	//lora_set_coding_rate(CONFIG_CODING_RATE);
-	//cr = lora_get_coding_rate();
-	ESP_LOGI(pcTaskGetName(NULL), "coding_rate=%d", cr);
-
 	lora_set_bandwidth(bw);
-	//lora_set_bandwidth(CONFIG_BANDWIDTH);
-	//int bw = lora_get_bandwidth();
-	ESP_LOGI(pcTaskGetName(NULL), "bandwidth=%d", bw);
-
 	lora_set_spreading_factor(sf);
-	//lora_set_spreading_factor(CONFIG_SF_RATE);
-	//int sf = lora_get_spreading_factor();
-	ESP_LOGI(pcTaskGetName(NULL), "spreading_factor=%d", sf);
 
 	/** Initialize the SDS011. */
 	sds011_begin(SDS011_UART_PORT, SDS011_TX_GPIO, SDS011_RX_GPIO);
-
 
 	ESP_ERROR_CHECK(i2cdev_init());
 	memset(&dev, 0, sizeof(sht3x_t));
@@ -321,6 +265,4 @@ void app_main()
 	xTaskCreate(&task_sht30, "task_sht30" ,4096, NULL, 6, NULL);
 	xTaskCreate(&task_adc, "task_adc", 4096, NULL, 4, NULL);
 	xTaskCreate(&task_tx, "task_tx", 4096, &data, 0, NULL);
-
-// #endif
 }

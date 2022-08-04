@@ -691,13 +691,6 @@ D:/DH/DATN/gitcode/datn/send/build/esp-idf/i2c/CMakeFiles/edit_cache.dir
 D:/DH/DATN/gitcode/datn/send/build/esp-idf/i2c/CMakeFiles/rebuild_cache.dir
 D:/DH/DATN/gitcode/datn/send/build/esp-idf/i2c/CMakeFiles/list_install_components.dir
 D:/DH/DATN/gitcode/datn/send/build/esp-idf/i2c/CMakeFiles/install/strip.dir
-D:/DH/DATN/gitcode/datn/send/build/esp-idf/mh-z19/CMakeFiles/install/strip.dir
-D:/DH/DATN/gitcode/datn/send/build/esp-idf/mh-z19/CMakeFiles/__idf_mh-z19.dir
-D:/DH/DATN/gitcode/datn/send/build/esp-idf/mh-z19/CMakeFiles/install/local.dir
-D:/DH/DATN/gitcode/datn/send/build/esp-idf/mh-z19/CMakeFiles/install.dir
-D:/DH/DATN/gitcode/datn/send/build/esp-idf/mh-z19/CMakeFiles/edit_cache.dir
-D:/DH/DATN/gitcode/datn/send/build/esp-idf/mh-z19/CMakeFiles/rebuild_cache.dir
-D:/DH/DATN/gitcode/datn/send/build/esp-idf/mh-z19/CMakeFiles/list_install_components.dir
 D:/DH/DATN/gitcode/datn/send/build/esp-idf/sds011/CMakeFiles/__idf_sds011.dir
 D:/DH/DATN/gitcode/datn/send/build/esp-idf/sds011/CMakeFiles/install/local.dir
 D:/DH/DATN/gitcode/datn/send/build/esp-idf/sds011/CMakeFiles/install.dir

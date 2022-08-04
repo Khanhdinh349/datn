@@ -42,8 +42,8 @@ void wifi_connection_begin(void){
 
 	wifi_config_t wifi_config = {
         .sta = {
-            .ssid = SSID,
-            .password = PASS,
+        .ssid = SSID,
+        .password = PASS,
         },
     };
 	ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));

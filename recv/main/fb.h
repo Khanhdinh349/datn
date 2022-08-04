@@ -33,7 +33,7 @@ typedef struct
 {
    int ID;//node id
    float CO;//CO
-   float UV;//UV
+   float GAS;//GAS
    float H; //Humi
    float T; //Temp
    float D; //Dust2.5
@@ -45,7 +45,7 @@ typedef struct
 typedef struct 
 {
    float CO;//CO
-   float UV;//UV
+   float GAS;//GAS
    float H; //Humi
    float T; //Temp
    float D; //Dust2.5
