@@ -1,0 +1,23 @@
+esp-idf/libsodium/CMakeFiles/__idf_libsodium.dir/libsodium/src/libsodium/crypto_scalarmult/curve25519/scalarmult_curve25519.c.obj: \
+ /home/henrynghiem/tools/esp-idf/components/libsodium/libsodium/src/libsodium/crypto_scalarmult/curve25519/scalarmult_curve25519.c \
+ /home/henrynghiem/tools/esp-idf/components/libsodium/libsodium/src/libsodium/include/sodium/crypto_scalarmult_curve25519.h \
+ /home/henrynghiem/.espressif/tools/xtensa-esp32-elf/esp-2021r2-patch3-8.4.0/xtensa-esp32-elf/lib/gcc/xtensa-esp32-elf/8.4.0/include/stddef.h \
+ /home/henrynghiem/tools/esp-idf/components/libsodium/libsodium/src/libsodium/include/sodium/export.h \
+ /home/henrynghiem/.espressif/tools/xtensa-esp32-elf/esp-2021r2-patch3-8.4.0/xtensa-esp32-elf/lib/gcc/xtensa-esp32-elf/8.4.0/include/stdint.h \
+ /home/henrynghiem/.espressif/tools/xtensa-esp32-elf/esp-2021r2-patch3-8.4.0/xtensa-esp32-elf/xtensa-esp32-elf/sys-include/stdint.h \
+ /home/henrynghiem/.espressif/tools/xtensa-esp32-elf/esp-2021r2-patch3-8.4.0/xtensa-esp32-elf/xtensa-esp32-elf/sys-include/machine/_default_types.h \
+ /home/henrynghiem/.espressif/tools/xtensa-esp32-elf/esp-2021r2-patch3-8.4.0/xtensa-esp32-elf/xtensa-esp32-elf/sys-include/sys/features.h \
+ /home/henrynghiem/.espressif/tools/xtensa-esp32-elf/esp-2021r2-patch3-8.4.0/xtensa-esp32-elf/xtensa-esp32-elf/sys-include/_newlib_version.h \
+ /home/henrynghiem/.espressif/tools/xtensa-esp32-elf/esp-2021r2-patch3-8.4.0/xtensa-esp32-elf/xtensa-esp32-elf/sys-include/sys/_intsup.h \
+ /home/henrynghiem/.espressif/tools/xtensa-esp32-elf/esp-2021r2-patch3-8.4.0/xtensa-esp32-elf/xtensa-esp32-elf/sys-include/sys/_stdint.h \
+ /home/henrynghiem/.espressif/tools/xtensa-esp32-elf/esp-2021r2-patch3-8.4.0/xtensa-esp32-elf/lib/gcc/xtensa-esp32-elf/8.4.0/include-fixed/limits.h \
+ /home/henrynghiem/.espressif/tools/xtensa-esp32-elf/esp-2021r2-patch3-8.4.0/xtensa-esp32-elf/lib/gcc/xtensa-esp32-elf/8.4.0/include-fixed/syslimits.h \
+ /home/henrynghiem/.espressif/tools/xtensa-esp32-elf/esp-2021r2-patch3-8.4.0/xtensa-esp32-elf/xtensa-esp32-elf/sys-include/limits.h \
+ /home/henrynghiem/.espressif/tools/xtensa-esp32-elf/esp-2021r2-patch3-8.4.0/xtensa-esp32-elf/xtensa-esp32-elf/sys-include/newlib.h \
+ /home/henrynghiem/.espressif/tools/xtensa-esp32-elf/esp-2021r2-patch3-8.4.0/xtensa-esp32-elf/xtensa-esp32-elf/sys-include/sys/cdefs.h \
+ /home/henrynghiem/.espressif/tools/xtensa-esp32-elf/esp-2021r2-patch3-8.4.0/xtensa-esp32-elf/xtensa-esp32-elf/sys-include/sys/syslimits.h \
+ /home/henrynghiem/tools/esp-idf/components/libsodium/libsodium/src/libsodium/include/sodium/private/implementations.h \
+ /home/henrynghiem/tools/esp-idf/components/libsodium/libsodium/src/libsodium/crypto_scalarmult/curve25519/scalarmult_curve25519.h \
+ /home/henrynghiem/tools/esp-idf/components/libsodium/libsodium/src/libsodium/include/sodium/runtime.h \
+ /home/henrynghiem/tools/esp-idf/components/libsodium/libsodium/src/libsodium/crypto_scalarmult/curve25519/ref10/x25519_ref10.h \
+ /home/henrynghiem/tools/esp-idf/components/libsodium/libsodium/src/libsodium/crypto_scalarmult/curve25519/ref10/../scalarmult_curve25519.h

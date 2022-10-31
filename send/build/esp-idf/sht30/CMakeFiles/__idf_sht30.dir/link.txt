@@ -1,0 +1,2 @@
+/home/henrynghiem/.espressif/tools/xtensa-esp32-elf/esp-2021r2-patch3-8.4.0/xtensa-esp32-elf/bin/xtensa-esp32-elf-ar qc libsht30.a CMakeFiles/__idf_sht30.dir/sht30.c.obj CMakeFiles/__idf_sht30.dir/home/henrynghiem/datn/components/i2c/i2cdev.c.obj
+/home/henrynghiem/.espressif/tools/xtensa-esp32-elf/esp-2021r2-patch3-8.4.0/xtensa-esp32-elf/bin/xtensa-esp32-elf-ranlib libsht30.a

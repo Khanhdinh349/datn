@@ -1,21 +1,21 @@
 {
     "project_name":       "bootloader",
-    "project_path":       "D:/Download/esp-idf/components/bootloader/subproject",
-    "build_dir":          "D:/DH/DATN/gitcode/datn/send/build/bootloader",
-    "config_file":        "D:/DH/DATN/gitcode/datn/send/sdkconfig",
+    "project_path":       "/home/henrynghiem/tools/esp-idf/components/bootloader/subproject",
+    "build_dir":          "/home/henrynghiem/datn/send/build/bootloader",
+    "config_file":        "/home/henrynghiem/datn/send/sdkconfig",
     "config_defaults":    "",
     "app_elf":            "bootloader.elf",
     "app_bin":            "bootloader.bin",
-    "git_revision":       "v4.4",
+    "git_revision":       "v4.4.2",
     "target":             "esp32",
     "rev":                "0",
     "phy_data_partition": "",
     "monitor_baud" :      "115200",
     "monitor_toolprefix": "xtensa-esp32-elf-",
     "config_environment" : {
-        "COMPONENT_KCONFIGS" : "D:/Download/esp-idf/components/efuse/Kconfig;D:/Download/esp-idf/components/esp32/Kconfig;D:/Download/esp-idf/components/esp_common/Kconfig;D:/Download/esp-idf/components/esp_hw_support/Kconfig;D:/Download/esp-idf/components/esp_system/Kconfig;D:/Download/esp-idf/components/freertos/Kconfig;D:/Download/esp-idf/components/hal/Kconfig;D:/Download/esp-idf/components/log/Kconfig;D:/Download/esp-idf/components/newlib/Kconfig;D:/Download/esp-idf/components/spi_flash/Kconfig",
-        "COMPONENT_KCONFIGS_PROJBUILD" : "D:/Download/esp-idf/components/bootloader/Kconfig.projbuild;D:/Download/esp-idf/components/esp_rom/Kconfig.projbuild;D:/Download/esp-idf/components/esptool_py/Kconfig.projbuild;D:/Download/esp-idf/components/partition_table/Kconfig.projbuild"
+        "COMPONENT_KCONFIGS" : "/home/henrynghiem/tools/esp-idf/components/efuse/Kconfig;/home/henrynghiem/tools/esp-idf/components/esp32/Kconfig;/home/henrynghiem/tools/esp-idf/components/esp_common/Kconfig;/home/henrynghiem/tools/esp-idf/components/esp_hw_support/Kconfig;/home/henrynghiem/tools/esp-idf/components/esp_system/Kconfig;/home/henrynghiem/tools/esp-idf/components/freertos/Kconfig;/home/henrynghiem/tools/esp-idf/components/hal/Kconfig;/home/henrynghiem/tools/esp-idf/components/log/Kconfig;/home/henrynghiem/tools/esp-idf/components/newlib/Kconfig;/home/henrynghiem/tools/esp-idf/components/spi_flash/Kconfig",
+        "COMPONENT_KCONFIGS_PROJBUILD" : "/home/henrynghiem/tools/esp-idf/components/bootloader/Kconfig.projbuild;/home/henrynghiem/tools/esp-idf/components/esp_rom/Kconfig.projbuild;/home/henrynghiem/tools/esp-idf/components/esptool_py/Kconfig.projbuild;/home/henrynghiem/tools/esp-idf/components/partition_table/Kconfig.projbuild"
     },
     "build_components" : [ "bootloader", "bootloader_support", "efuse", "esp32", "esp_common", "esp_hw_support", "esp_rom", "esp_system", "esptool_py", "freertos", "hal", "log", "main", "micro-ecc", "newlib", "partition_table", "soc", "spi_flash", "xtensa", "" ],
-    "build_component_paths" : [ "D:/Download/esp-idf/components/bootloader", "D:/Download/esp-idf/components/bootloader_support", "D:/Download/esp-idf/components/efuse", "D:/Download/esp-idf/components/esp32", "D:/Download/esp-idf/components/esp_common", "D:/Download/esp-idf/components/esp_hw_support", "D:/Download/esp-idf/components/esp_rom", "D:/Download/esp-idf/components/esp_system", "D:/Download/esp-idf/components/esptool_py", "D:/Download/esp-idf/components/freertos", "D:/Download/esp-idf/components/hal", "D:/Download/esp-idf/components/log", "D:/Download/esp-idf/components/bootloader/subproject/main", "D:/Download/esp-idf/components/bootloader/subproject/components/micro-ecc", "D:/Download/esp-idf/components/newlib", "D:/Download/esp-idf/components/partition_table", "D:/Download/esp-idf/components/soc", "D:/Download/esp-idf/components/spi_flash", "D:/Download/esp-idf/components/xtensa", "" ]
+    "build_component_paths" : [ "/home/henrynghiem/tools/esp-idf/components/bootloader", "/home/henrynghiem/tools/esp-idf/components/bootloader_support", "/home/henrynghiem/tools/esp-idf/components/efuse", "/home/henrynghiem/tools/esp-idf/components/esp32", "/home/henrynghiem/tools/esp-idf/components/esp_common", "/home/henrynghiem/tools/esp-idf/components/esp_hw_support", "/home/henrynghiem/tools/esp-idf/components/esp_rom", "/home/henrynghiem/tools/esp-idf/components/esp_system", "/home/henrynghiem/tools/esp-idf/components/esptool_py", "/home/henrynghiem/tools/esp-idf/components/freertos", "/home/henrynghiem/tools/esp-idf/components/hal", "/home/henrynghiem/tools/esp-idf/components/log", "/home/henrynghiem/tools/esp-idf/components/bootloader/subproject/main", "/home/henrynghiem/tools/esp-idf/components/bootloader/subproject/components/micro-ecc", "/home/henrynghiem/tools/esp-idf/components/newlib", "/home/henrynghiem/tools/esp-idf/components/partition_table", "/home/henrynghiem/tools/esp-idf/components/soc", "/home/henrynghiem/tools/esp-idf/components/spi_flash", "/home/henrynghiem/tools/esp-idf/components/xtensa", "" ]
 }

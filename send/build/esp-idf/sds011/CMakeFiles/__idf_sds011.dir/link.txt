@@ -1,0 +1,2 @@
+/home/henrynghiem/.espressif/tools/xtensa-esp32-elf/esp-2021r2-patch3-8.4.0/xtensa-esp32-elf/bin/xtensa-esp32-elf-ar qc libsds011.a CMakeFiles/__idf_sds011.dir/sds011.c.obj
+/home/henrynghiem/.espressif/tools/xtensa-esp32-elf/esp-2021r2-patch3-8.4.0/xtensa-esp32-elf/bin/xtensa-esp32-elf-ranlib libsds011.a
